@@ -1,0 +1,121 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.util.ArrayList;
+import java.util.Comparator;
+
+public class PolygonDrawer extends JPanel implements MouseListener {
+    private ArrayList<Point> points = new ArrayList<>();
+    private ArrayList<Point> polygonPoints = new ArrayList<>();
+    private boolean isDrawing = true;
+    private int numVertices;
+
+    public PolygonDrawer(int numVertices) {
+        this.numVertices = numVertices;
+        setPreferredSize(new Dimension(600, 600));
+        addMouseListener(this);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        // Draw vertices
+        for (Point point : points) {
+            g.setColor(Color.RED);
+            g.fillOval(point.x - 5, point.y - 5, 10, 10);
+        }
+        // Draw polygon
+        if (!isDrawing) {
+            g.setColor(Color.BLUE);
+            int[] xPoints = new int[polygonPoints.size()];
+            int[] yPoints = new int[polygonPoints.size()];
+            for (int i = 0; i < polygonPoints.size(); i++) {
+                xPoints[i] = polygonPoints.get(i).x;
+                yPoints[i] = polygonPoints.get(i).y;
+            }
+            g.fillPolygon(xPoints, yPoints, polygonPoints.size());
+        }
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        if (isDrawing) {
+            points.add(e.getPoint());
+            repaint();
+            if (points.size() == numVertices) {
+                isDrawing = false;
+                findPolygonPoints();
+                askToDrawNewPolygon();
+            }
+        }
+    }
+
+    private void findPolygonPoints() {
+        // Sort points based on x-coordinate
+        points.sort(Comparator.comparingInt(p -> p.x));
+        // Find top and bottom points
+        Point top = points.get(0);
+        Point bottom = points.get(points.size() - 1);
+        ArrayList<Point> leftPoints = new ArrayList<>();
+        ArrayList<Point> rightPoints = new ArrayList<>();
+        // Separate points into left and right lists
+        for (Point point : points) {
+            if (point.equals(top) || point.equals(bottom)) {
+                continue;
+            }
+            if ((point.x - top.x) * (bottom.y - top.y) - (point.y - top.y) * (bottom.x - top.x) > 0) {
+                leftPoints.add(point);
+            } else {
+                rightPoints.add(point);
+            }
+        }
+        // Add points to polygon in correct order
+        polygonPoints.add(top);
+        polygonPoints.addAll(leftPoints);
+        polygonPoints.add(bottom);
+        for (int i = rightPoints.size() - 1; i >= 0; i--) {
+            polygonPoints.add(rightPoints.get(i));
+        }
+        repaint();
+    }
+
+    private void askToDrawNewPolygon() {
+        int choice = JOptionPane.showConfirmDialog(this, "是否绘制新的多边形?", "绘制完成", JOptionPane.YES_NO_OPTION);
+        if (choice == JOptionPane.YES_OPTION) {
+            resetDrawing();
+        } else {
+            System.exit(0);
+        }
+    }
+
+    private void resetDrawing() {
+        points.clear();
+        polygonPoints.clear();
+        isDrawing = true;
+        repaint();
+    }
+
+    // Unused MouseListener methods
+    @Override
+    public void mousePressed(MouseEvent e) {}
+    @Override
+    public void mouseReleased(MouseEvent e) {}
+    @Override
+    public void mouseEntered(MouseEvent e) {}
+    @Override
+    public void mouseExited(MouseEvent e) {}
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            int numVertices = Integer.parseInt(JOptionPane.showInputDialog("请输入要画的多边形的顶点数："));
+            JFrame frame = new JFrame("Polygon Drawer");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            PolygonDrawer drawer = new PolygonDrawer(numVertices);
+            frame.add(drawer);
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+        });
+    }
+}
